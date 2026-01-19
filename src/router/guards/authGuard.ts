@@ -1,4 +1,4 @@
-import { apiService } from '@/services/api';
+import {authService} from '@/services/authService';
 import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router';
 
 export const authGuard = async (
@@ -10,12 +10,8 @@ export const authGuard = async (
   const tokenExpiresAt = localStorage.getItem('tokenExpiresAt');
 
   const checkAuth = async(): Promise<boolean> => {
-    const response = await apiService.post('auth/isAuthenticated', null);
-    if (response.ok) {
-      return true; 
-    } else {
-      return false;
-    }
+    const response = await authService.isAuthenticated();
+    return !!response;
   }
 
 if (to.meta.requiresAuth) {
@@ -25,7 +21,7 @@ if (to.meta.requiresAuth) {
     return;
     }
     next();
-} else if (to.path === '/login' && token && (await checkAuth())) {
+} else if ((to.path === '/login' || to.path === '/registration') && token && (await checkAuth())) {
     next('/');
 } else{
     next();

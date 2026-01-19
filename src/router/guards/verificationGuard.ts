@@ -1,5 +1,5 @@
-import { apiService } from '@/services/api';
 import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router';
+import {authService} from "@/services/authService.ts";
 
 export const verificationGuard = async (
   to: RouteLocationNormalized,
@@ -9,17 +9,12 @@ export const verificationGuard = async (
 
 
   const checkUser = async(): Promise<Boolean> => {
-    const response = await apiService.post('auth/isUser', null);
-    if(response.ok){
-        return true;
-    }else{
-        return false;
-    }
+      return authService.checkUser();
   }
   
   if(to.meta.requiresVerification){
     
-    if(!checkUser()){
+    if(!(await checkUser())){
         next('/verification')
         return;
     }

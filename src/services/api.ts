@@ -1,36 +1,24 @@
-import type { ProblemDetail, ApiError, ReadMemberDto, ReadFamilyDto, CreateFamilyDto } from '@/types/api';
+import type { ErrorParse, ApiError, ReadMemberDto, ReadFamilyDto, CreateFamilyDto } from '@/types/api';
+import {AuthError, ValidationError} from "@/error/types/errors.ts";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
-async function parseProblemDetail(response: Response): Promise<ProblemDetail> {
-  try {
-    const problem: ProblemDetail = await response.json();
-    
-    return {
-      ...problem, 
-      title: problem.title || 'Ошибка',
-      detail: problem.detail || 'Произошла неизвестная ошибка',
-    };
-  } catch {
-    return {
-      status: response.status,
-      title: 'Ошибка',
-      detail: `HTTP Error: ${response.status} ${response.statusText}`
-    };
-  }
+async function parseProblemDetail(response: Response): Promise<void> {
+
+    const problem: ErrorParse = response as ErrorParse;
+    switch (problem.status) {
+      case 400:
+        throw new ValidationError("Ошибка валидации!", problem.fieldErrors);
+      case 401:
+        throw new AuthError(problem.detail, problem.title);
+    }
 }
 
 
-export async function handleApiError(response: Response): Promise<ApiError> {
-  const problem = await parseProblemDetail(response);
-  
-  return {
-    message: problem.detail || `Ошибка ${response.status}`,
-    status: response.status,
-    problem
-  };
+export async function handleApiError(response: Response): Promise<void> {
+  await parseProblemDetail(response);
 }
 
-async function apiRequest(url: string, options: RequestInit = {}) {
+export async function apiRequest(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
 
   const headers = {
@@ -38,7 +26,7 @@ async function apiRequest(url: string, options: RequestInit = {}) {
     ...options.headers,
   } as HeadersInit;
 
-  if (token) {
+  if (token && token !== "undefined") {
     (headers as any)['Authorization'] = `Bearer ${token}`;
   }
 
@@ -46,26 +34,27 @@ async function apiRequest(url: string, options: RequestInit = {}) {
     ...options,
     headers,
   });
-
+  let body: any = null;
   try {
-    return {
-      response,
-      ok: response.ok,
-      status: response.status
-    };
-    
-  } catch (error) {
-    throw new Error(`Failed to parse JSON: ${error}`);
+    body = await response.json();
+  } catch {
+    body = null;
   }
+
+  return {
+    body,
+    ok: response.ok,
+    status: response.status
+  };
 }
 
 export const apiService = {
   async get(url: string) {
     const result = await apiRequest(url);
     if (!result.ok) {
-      throw await handleApiError(result.response);
+      await handleApiError(result.body);
     }
-    return result.response;
+    return result.body;
   },
 
   async post(url: string, data: any) {
@@ -75,12 +64,10 @@ export const apiService = {
       body: JSON.stringify(data),
     });
     if (!result.ok) {
-     
-      throw await handleApiError(result.response);
+      await handleApiError(result.body);
     }
-     console.log(result);
     console.log('Запрос прошел без ошибок.')
-    return result.response;
+    return result;
   },
 
   async put(url: string, data: any) {
@@ -89,29 +76,29 @@ export const apiService = {
       body: JSON.stringify(data),
     });
     if (!result.ok) {
-      throw await handleApiError(result.response);
+      await handleApiError(result.body);
     }
-    return result.response;
+    return result;
   },
 
   async delete(url: string) {
     const result = await apiRequest(url, { method: 'DELETE' });
     if (!result.ok) {
-      throw await handleApiError(result.response);
+      await handleApiError(result.body);
     }
-    return result.response;
+    return result;
   },
-};
 
+};
 
 export async function hasFamily(): Promise<boolean> {
   const response = await apiService.post('member/hasFamily', null);
-  return await response.json();
+  return response.ok;
 }
 
 export async function getFamilyMembers(): Promise<ReadMemberDto[]> {
   const response = await apiService.get('family/members');
-  return await response.json();
+  return await response;
 }
 
 export async function createFamily(familyName: string): Promise<ReadFamilyDto> {
@@ -120,5 +107,5 @@ export async function createFamily(familyName: string): Promise<ReadFamilyDto> {
   }
   const data: CreateFamilyDto = { familyName: familyName.trim() };
   const response = await apiService.post('family/create', data);
-  return await response.json();
+  return await response.body;
 }

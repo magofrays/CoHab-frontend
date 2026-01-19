@@ -2,6 +2,7 @@ import { ref, onMounted } from 'vue'
 import { hasFamily, getFamilyMembers, createFamily } from '@/services/api'
 import type { ReadMemberDto, ReadFamilyDto } from '@/types/api'
 import type { ApiError } from '@/types/api'
+import Header from "@/views/header/Header.vue";
 
 interface Task {
   id: string
@@ -14,6 +15,7 @@ interface Task {
 
 export default {
   name: 'HomeView',
+  components: {Header},
   setup() {
     const loading = ref(false)
     const tasks = ref<Task[]>([])
@@ -150,8 +152,8 @@ export default {
     }
 
     onMounted(() => {
-      checkHasFamily()
-      loadTasks()
+      // checkHasFamily()
+      // loadTasks()
     })
 
     return {

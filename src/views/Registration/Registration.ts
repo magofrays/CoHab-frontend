@@ -1,45 +1,51 @@
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { apiService } from '@/services/api';
-import type { ApiError, LoginResponse } from '@/types/api';
+import {computed, ref} from 'vue';
+import {useRouter} from 'vue-router';
+import {apiService} from '@/services/api';
+import {ValidationError} from "@/error/types/errors.ts";
+import ValidationErrorComponent from "@/error/templates/ValidationErrorComponent.vue";
+import Header from "@/views/header/Header.vue";
+import AuthErrorComponent from "@/error/templates/AuthErrorComponent.vue";
 
 export default {
     name: 'Registration',
-    setup() {
+    components: {AuthErrorComponent, Header, ValidationErrorComponent},
+    setup: function () {
         const router = useRouter();
         const username = ref<string>('');
         const password = ref<string>('');
         const firstname = ref<string>('');
         const lastname = ref<string>('');
         const birthDate = ref<string>('');
-        const error = ref<string>('');
         const loading = ref<boolean>(false);
+        const errorState= ref<{ validationError?: ValidationError | null }> ({
+            validationError: null,
+        });
 
-        const handleLogin = async (): Promise<void> => {
+        const hasErrors = computed(() => {
+
+            return errorState.value.validationError !== null;
+        })
+
+        const handleRegistration = async (): Promise<void> => {
             loading.value = true;
-            error.value = '';
 
             try {
-                const response = await apiService.post('auth/registration', {
+                const data = await apiService.post('auth/registration', {
                     username: username.value,
                     password: password.value,
                     firstname: firstname.value,
                     lastname: lastname.value,
                     birthDate: birthDate.value
                 });
-
-                const data = response;
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('tokenExpiresAt', data.expiresAt);
-                router.push('/');
+                localStorage.setItem('token', data.body.token);
+                localStorage.setItem('tokenExpiresAt', data.body.expiresAt);
+                await router.push('/');
 
             } catch (err: unknown) {
-                const apiError = err as ApiError;
-                error.value = apiError.message ;
-
-                if (apiError.status === 403) {
-                    console.warn('Account issue:', apiError.problem?.detail);
+                if (err instanceof ValidationError) {
+                    errorState.value.validationError = err;
                 }
+
             } finally {
                 loading.value = false;
             }
@@ -51,9 +57,10 @@ export default {
             firstname,
             lastname,
             birthDate,
-            error,
             loading,
-            handleLogin,
+            errorState,
+            hasErrors,
+            handleRegistration,
         };
     },
 };

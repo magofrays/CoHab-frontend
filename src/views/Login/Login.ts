@@ -1,39 +1,47 @@
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { apiService } from '@/services/api';
-import type { ApiError, LoginResponse } from '@/types/api';
+import {computed, ref} from 'vue';
+import {useRouter} from 'vue-router';
+import {apiService} from '@/services/api';
+import ValidationErrorComponent from "@/error/templates/ValidationErrorComponent.vue";
+import {AuthError, ValidationError} from "@/error/types/errors.ts";
+import Header from "@/views/header/Header.vue";
+import AuthErrorComponent from "@/error/templates/AuthErrorComponent.vue";
 
 export default {
   name: 'LoginView',
+  components: {AuthErrorComponent, Header, ValidationErrorComponent, ValidationError: ValidationErrorComponent},
   setup() {
     const router = useRouter();
     const username = ref<string>('');
     const password = ref<string>('');
-    const error = ref<string>('');
     const loading = ref<boolean>(false);
+    const errorState= ref<{ validationError?: ValidationError | null, authError?: AuthError | null }> ({
+      validationError: null,
+      authError: null
+    });
 
+    const hasErrors = computed(() => {
+      let value = errorState.value;
+      return value.validationError !== null || value.authError !== null;
+    })
     const handleLogin = async (): Promise<void> => {
       loading.value = true;
-      error.value = '';
-
       try {
-        const response = await apiService.post('auth/login', {
+        const data = await apiService.post('auth/login', {
           username: username.value,
           password: password.value,
         });
+        localStorage.setItem('token', data.body.token);
+        localStorage.setItem('tokenExpiresAt', data.body.expiresAt);
+        await router.push('/');
 
-        const data = response;
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('tokenExpiresAt', data.expiresAt);
-        router.push('/');
-        
       } catch (err: unknown) {
-        const apiError = err as ApiError;
-        error.value = apiError.message ;
-        
-        if (apiError.status === 403) {
-          console.warn('Account issue:', apiError.problem?.detail);
+        if (err instanceof ValidationError) {
+          errorState.value.validationError = err;
         }
+        if(err instanceof AuthError) {
+          errorState.value.authError = err;
+        }
+
       } finally {
         loading.value = false;
       }
@@ -42,8 +50,9 @@ export default {
     return {
       username,
       password,
-      error,
+      errorState,
       loading,
+      hasErrors,
       handleLogin,
     };
   },

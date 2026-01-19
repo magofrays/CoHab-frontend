@@ -1,5 +1,7 @@
+import type {ProblemDetail} from "@/error/types/errors.ts";
 
-export interface ProblemDetail {
+export interface ErrorParse {
+  fieldErrors?: ProblemDetail[];
   type?: string;
   title?: string;
   status: number;
@@ -12,7 +14,6 @@ export interface ProblemDetail {
   error?: string;
 }
 
-// 🔥 Базовые интерфейсы для API
 export interface LoginRequest {
   username: string;
   password: string;
@@ -27,7 +28,7 @@ export interface LoginResponse {
 export interface ApiError {
   message: string;
   status: number;
-  problem?: ProblemDetail;
+  problem?: ErrorParse;
 }
 
 // Family and Member DTOs

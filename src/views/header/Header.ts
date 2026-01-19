@@ -1,0 +1,25 @@
+import {getLoginState} from "@/services/loginStateResolver.ts";
+import {authService} from "@/services/authService.ts";
+import router from "@/router";
+
+export default {
+    name: 'Header',
+
+    setup() {
+        const {loginState} = getLoginState();
+
+        const handleLogoutClick = () => {
+            authService.logout();
+            return router.push('/login');
+        }
+        const handleProfileClick = () => {
+            console.log('handleProfileClick')
+        }
+
+        return{
+            state: loginState,
+            handleProfileClick,
+            handleLogoutClick,
+        }
+    }
+}

@@ -24,9 +24,9 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresVerification: true }
     },
     {
-      path: '/verefication',
+      path: '/verification',
       name: 'Verification',
-      component: () => import('@/views/Home/Home.vue'),
+      component: () => import('@/views/Verification/Verification.vue'),
       meta: { requiresAuth: true, requiresVerification: false}
     }
   ],
