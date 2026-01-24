@@ -1,4 +1,4 @@
-import type { ErrorParse, ApiError, ReadMemberDto, ReadFamilyDto, CreateFamilyDto } from '@/types/api';
+import type { ErrorParse} from '@/types/responses.ts';
 import {AuthError, ValidationError} from "@/error/types/errors.ts";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -54,7 +54,7 @@ export const apiService = {
     if (!result.ok) {
       await handleApiError(result.body);
     }
-    return result.body;
+    return result;
   },
 
   async post(url: string, data: any) {
@@ -92,20 +92,20 @@ export const apiService = {
 };
 
 export async function hasFamily(): Promise<boolean> {
-  const response = await apiService.post('member/hasFamily', null);
+  const response = await apiService.get('member/hasFamily');
   return response.ok;
 }
 
-export async function getFamilyMembers(): Promise<ReadMemberDto[]> {
-  const response = await apiService.get('family/members');
-  return await response;
-}
-
-export async function createFamily(familyName: string): Promise<ReadFamilyDto> {
-  if (!familyName || !familyName.trim()) {
-    throw new Error('Family name is required');
-  }
-  const data: CreateFamilyDto = { familyName: familyName.trim() };
-  const response = await apiService.post('family/create', data);
-  return await response.body;
-}
+// export async function getFamilyMembers(): Promise<ReadMemberDto[]> {
+//   const response = await apiService.get('family/members');
+//   return await response;
+// }
+//
+// export async function createFamily(familyName: string): Promise<ReadFamilyDto> {
+//   if (!familyName || !familyName.trim()) {
+//     throw new Error('Family name is required');
+//   }
+//   const data: CreateFamilyDto = { familyName: familyName.trim() };
+//   const response = await apiService.post('family/create', data);
+//   return await response.body;
+// }

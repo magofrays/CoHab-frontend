@@ -1,29 +1,35 @@
-import { ref, onMounted } from 'vue'
-import { hasFamily, getFamilyMembers, createFamily } from '@/services/api'
-import type { ReadMemberDto, ReadFamilyDto } from '@/types/api'
-import type { ApiError } from '@/types/api'
-import Header from "@/views/header/Header.vue";
-
-interface Task {
-  id: string
-  title: string
-  description: string
-  completed: boolean
-  assignedTo: string
-  dueDate: string
-}
+import {computed, onMounted, ref, watch} from 'vue'
+import {apiService} from '@/services/api'
+import Header from "@/views/header/Header.vue"
+import type {Family, FamilyMember} from "@/types/family.ts"
+import getFamilyStore from "@/stores/familyStore.ts"
+import type {Task} from "@/types/task.ts";
+import TaskComponent from "@/views/Home/templates/TaskComponent.vue";
 
 export default {
   name: 'HomeView',
-  components: {Header},
+  components: { Header, TaskComponent },
   setup() {
-    const loading = ref(false)
-    const tasks = ref<Task[]>([])
-    const familyMembers = ref<ReadMemberDto[]>([])
-    const userHasFamily = ref<boolean | null>(null)
+    const homeLoading = ref(false)
+    const familyMembersLoading = ref(false)
+    const tasksLoading = ref(false)
+
     const showCreateFamilyForm = ref(false)
+    const showJoinFamilyForm = ref(false)
     const newFamilyName = ref('')
+    const joinFamilyCode = ref('')
     const creatingFamily = ref(false)
+    const joiningFamily = ref(false)
+    const userHasFamily = ref(true)
+
+    const activeFamilyTab = ref<string>()
+    const familyMembers = ref<FamilyMember[]>([])
+    const currentFamily = ref<Family>()
+    const currentTasks = ref<Task[]>([])
+
+    const familyStore = getFamilyStore()
+
+    const families = computed(() => familyStore.families)
 
     const formatDate = (dateString: string): string => {
       if (!dateString) return 'Не указана'
@@ -31,116 +37,101 @@ export default {
       return date.toLocaleDateString('ru-RU')
     }
 
-    const formatFamilyNames = (families?: ReadFamilyDto[]): string => {
-      if (!families || families.length === 0) return ''
-      return families.map((f: ReadFamilyDto) => f.familyName).join(', ')
-    }
-
     const showError = (message: string) => {
       alert(`Ошибка: ${message}`)
     }
 
     const checkHasFamily = async (): Promise<void> => {
+      userHasFamily.value = Object.keys(families.value).length > 0
+    }
+
+    const loadFamilies = async (): Promise<void> => {
+      homeLoading.value = true
       try {
-        loading.value = true
-        userHasFamily.value = await hasFamily()
-        if (userHasFamily.value) {
-          await loadFamilyMembers()
-        } else {
-          showCreateFamilyForm.value = true
+        if (!familyStore.familiesLoaded) {
+          const familiesLoad: FamilyMember[] = (await apiService.get('member/families')).body || []
+          familyStore.loadFamilies(familiesLoad)
         }
       } catch (error) {
-        const apiError = error as ApiError
-        showError(apiError.message || 'Не удалось проверить наличие семьи')
+        console.log(error)
+        showError('Ошибка загрузки семей')
       } finally {
-        loading.value = false
+        homeLoading.value = false
       }
     }
 
-    const loadTasks = async (): Promise<void> => {
+    const loadTasks = async (familyId: string): Promise<void> => {
+      if(!familyId) return
+      tasksLoading.value = true
       try {
-        loading.value = true
-        tasks.value = [
-          {
-            id: '1',
-            title: 'Купить продукты',
-            description: 'Молоко, хлеб, яйца',
-            completed: false,
-            assignedTo: 'Мама',
-            dueDate: '2024-01-15'
-          }
-        ]
+        if(!familyStore.tasks[familyId]) {
+          const tasksLoad: Task[] = (await apiService.get('task/' + familyId)).body || []
+          familyStore.loadTasks(tasksLoad, familyId)
+        }
+        currentTasks.value = familyStore.tasks[familyId] || [];
       } catch (error) {
-        showError('Не удалось загрузить задачи')
+        console.log(error)
+        showError('Ошибка загрузки задач')
       } finally {
-        loading.value = false
+        tasksLoading.value = false
       }
     }
 
-    const loadFamilyMembers = async (): Promise<void> => {
+    const loadMembers = async (familyId: string): Promise<void> => {
+      if (!familyId) return
+
+      familyMembersLoading.value = true
       try {
-        loading.value = true
-        familyMembers.value = await getFamilyMembers()
+        if (!familyStore.members[familyId]) {
+          const members: FamilyMember[] = (await apiService.get('family/' + familyId + '/members')).body || []
+          familyStore.loadMembers(members)
+        }
+        familyMembers.value = familyStore.members[familyId] || []
       } catch (error) {
-        const apiError = error as ApiError
-        showError(apiError.message || 'Не удалось загрузить членов семьи')
+        console.log(error)
+        showError('Ошибка загрузки членов семьи')
       } finally {
-        loading.value = false
+        familyMembersLoading.value = false
       }
     }
 
     const handleCreateFamily = async (): Promise<void> => {
-      if (!newFamilyName.value.trim()) {
-        showError('Введите название семьи')
-        return
-      }
-
+      creatingFamily.value = true
       try {
-        creatingFamily.value = true
-        const createdFamily: ReadFamilyDto = await createFamily(newFamilyName.value.trim())
-        userHasFamily.value = true
-        showCreateFamilyForm.value = false
-        newFamilyName.value = ''
-        await loadFamilyMembers()
+        console.log('Creating family:', newFamilyName.value)
+        showError('Функция создания семьи пока не реализована')
       } catch (error) {
-        const apiError = error as ApiError
-        showError(apiError.message || 'Не удалось создать семью')
+        console.log(error)
+        showError('Ошибка создания семьи')
       } finally {
         creatingFamily.value = false
       }
     }
 
-    const toggleTask = async (taskId: string): Promise<void> => {
+    const handleJoinFamily = async (): Promise<void> => {
+      joiningFamily.value = true
       try {
-        await loadTasks()
+        // TODO: реализовать присоединение к семье
+        console.log('Joining family with code:', joinFamilyCode.value)
+        showError('Функция присоединения к семье пока не реализована')
       } catch (error) {
-        showError('Ошибка при обновлении задачи')
+        console.log(error)
+        showError('Ошибка присоединения к семье')
+      } finally {
+        joiningFamily.value = false
       }
+    }
+
+    const toggleTask = async (taskId: string): Promise<void> => {
+      // TODO
     }
 
     const deleteTask = async (taskId: string): Promise<void> => {
-      if (confirm('Удалить задачу?')) {
-        try {
-          await loadTasks()
-        } catch (error) {
-          showError('Ошибка при удалении задачи')
-        }
-      }
-    }
-
-    const editMember = (memberId: string): void => {
-      alert(`Редактирование члена семьи ${memberId} - нужно реализовать`)
+      // TODO
     }
 
     const deleteMember = async (memberId: string): Promise<void> => {
-      if (confirm('Удалить члена семьи?')) {
-        try {
-          await loadFamilyMembers()
-        } catch (error) {
-          const apiError = error as ApiError
-          showError(apiError.message || 'Ошибка при удалении члена семьи')
-        }
-      }
+      // TODO
     }
 
     const showAddTaskForm = (): void => {
@@ -151,30 +142,56 @@ export default {
       alert('Форма добавления члена семьи - нужно реализовать')
     }
 
-    onMounted(() => {
-      // checkHasFamily()
-      // loadTasks()
+    watch(activeFamilyTab, async (newTab) => {
+      if (newTab) {
+        await loadMembers(newTab)
+        await loadTasks(newTab)
+      }
+    })
+
+    onMounted(async () => {
+      await loadFamilies()
+      await checkHasFamily()
+
+      if (userHasFamily.value && Object.keys(families.value).length > 0) {
+        activeFamilyTab.value = Object.keys(families.value)[0]
+      }
     })
 
     return {
-      loading,
-      tasks,
-      familyMembers,
-      userHasFamily,
+      homeLoading,
+      familyMembersLoading,
+      tasksLoading,
+
+      // Form states
       showCreateFamilyForm,
+      showJoinFamilyForm,
       newFamilyName,
+      joinFamilyCode,
       creatingFamily,
+      joiningFamily,
+      userHasFamily,
+
+      // Data
+      activeFamilyTab,
+      familyMembers,
+      currentFamily,
+      currentTasks,
+      families,
+
+      familyStore,
+
       formatDate,
-      formatFamilyNames,
+      showError,
       loadTasks,
-      loadFamilyMembers,
+      loadMembers,
+      handleCreateFamily,
+      handleJoinFamily,
       toggleTask,
       deleteTask,
-      editMember,
       deleteMember,
       showAddTaskForm,
       showAddMemberForm,
-      handleCreateFamily
     }
   }
 }
