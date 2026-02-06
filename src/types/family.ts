@@ -26,3 +26,16 @@ export interface FamilyMember{
     family: Family,
     addedAt: Date
 }
+
+export interface CreateInvitation{
+    familyId: string,
+    numMembers: number,
+    expiresAt: Date,
+}
+
+export interface Invitation{
+    familyId: string,
+    code: string,
+    numMembers: number,
+    expiresAt: Date,
+}

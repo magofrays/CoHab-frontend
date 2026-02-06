@@ -1,7 +1,14 @@
 <template>
   <div class="min-h-screen relative">
     <Header />
-
+    <EditTaskComponent
+        v-if="showEditTaskComponent"
+        @close="handleCloseTaskForm"
+    />
+    <CreateInvitationComponent
+      v-if="showCreateInvitationComponent"
+      @close-invitation="handleCloseInvitationForm"
+    />
     <div class="p-8 space-y-8">
       <!-- Loading Indicator -->
       <div v-if="homeLoading || familyMembersLoading || tasksLoading"
@@ -24,6 +31,10 @@
 
           <!-- Tasks List -->
           <div class="space-y-4">
+            <div v-if="tasksLoading"
+                 class="fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+              Загрузка...
+            </div>
             <div v-if="currentTasks.length === 0" class="text-center py-8">
               <p class="text-gray-500">Задачи пока не добавлены</p>
             </div>
@@ -35,11 +46,12 @@
                     v-for="task in currentTasks"
                     :key="task.id"
                     :task="task"
-                    :current-user-id="currentUserId"
-                    @mark-task="handleMarkTask"
-                    @check-task="handleCheckTask"
-                    @edit-task="handleEditTask"
-                    @delete-task="handleDeleteTask"
+                    :current-user-id="familyStore.profiles[activeFamilyTab]?.id"
+                    :family-members="familyMembers"
+                @mark-task="handleMarkTask"
+                @check-task="handleCheckTask"
+                @edit-task="handleEditTaskPress"
+                @delete-task="handleDeleteTask"
                 />
               </div>
             </div>
@@ -62,7 +74,7 @@
             <button
                 v-for="(family, id) in families"
                 :key="id"
-                @click="activeFamilyTab = id"
+                @click="familyStore.activeFamilyTab = id"
                 :class="[
                 'px-4 py-2 font-medium text-sm whitespace-nowrap',
                 activeFamilyTab === id
@@ -73,10 +85,10 @@
               {{ family.familyName }}
             </button>
             <button
-                @click="activeFamilyTab = null"
+                @click="familyStore.activeFamilyTab = null"
                 :class="[
                 'px-4 py-2 font-medium text-sm',
-                activeFamilyTab === null
+                !activeFamilyTab
                   ? 'border-b-2 border-blue-500 text-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
               ]"
@@ -106,7 +118,7 @@
               <div
                   v-else
                   v-for="member in familyMembers"
-                  :key="member.id"
+                  :key="member.value.id"
                   class="p-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
               >
                 <div class="flex items-center space-x-4">
@@ -114,34 +126,25 @@
                       class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold"
                   >
                     {{
-                      (member.personalInfo?.firstname?.charAt(0) || '') +
-                      (member.personalInfo?.lastname?.charAt(0) || '')
+                      (member.value.personalInfo?.firstname?.charAt(0) || '') +
+                      (member.value.personalInfo?.lastname?.charAt(0) || '')
                     }}
                   </div>
                   <div class="flex-1">
                     <h3 class="font-medium text-gray-800">
-                      {{ member.personalInfo?.firstname || 'Не указано' }}
-                      {{ member.personalInfo?.lastname || 'Не указано' }}
+                      {{ member.value.personalInfo?.firstname || 'Не указано' }}
+                      {{ member.value.personalInfo?.lastname || 'Не указано' }}
                     </h3>
-                    <p class="text-sm text-gray-600">{{ member.username || 'Без логина' }}</p>
+                    <p class="text-sm text-gray-600">{{ member.value.username || 'Без логина' }}</p>
                     <p class="text-xs text-gray-500 mt-1">
                       Дата рождения:
                       {{
-                        member.personalInfo?.birthDate
-                            ? formatDate(member.personalInfo.birthDate)
+                        member.value.personalInfo?.birthDate
+                            ? formatDate(member.value.personalInfo.birthDate)
                             : 'Не указана'
                       }}
                     </p>
                   </div>
-                </div>
-                <div
-                    v-if="member.familyDtos && member.familyDtos.length > 0"
-                    class="mt-3 pt-3 border-t border-gray-100"
-                >
-                  <span class="text-xs text-gray-500">Семьи:</span>
-                  <span class="text-sm text-gray-700 ml-2">
-                    <!-- {{ formatFamilyNames(member.familyDtos) }} -->
-                  </span>
                 </div>
               </div>
             </div>
@@ -375,16 +378,10 @@
             Новая задача
           </button>
           <button
-              @click="showAddMemberForm"
-              :disabled="!activeFamilyTab"
-              class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            Добавить члена семьи
-          </button>
-          <button
               class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              @click="handleOpenInvitationForm"
           >
-            Настройки семьи
+            Создать код приглашения
           </button>
         </div>
       </div>

@@ -81,8 +81,10 @@ export const apiService = {
     return result;
   },
 
-  async delete(url: string) {
-    const result = await apiRequest(url, { method: 'DELETE' });
+  async delete(url: string, data: any) {
+    const result = await apiRequest(url, {
+      method: 'DELETE',
+      body: JSON.stringify(data)});
     if (!result.ok) {
       await handleApiError(result.body);
     }

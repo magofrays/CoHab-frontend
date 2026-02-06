@@ -1,19 +1,23 @@
-import {computed, onMounted, ref, watch} from 'vue'
+import {computed, onMounted, type Ref, ref, watch} from 'vue'
 import {apiService} from '@/services/api'
 import Header from "@/views/header/Header.vue"
 import type {Family, FamilyMember} from "@/types/family.ts"
 import getFamilyStore from "@/stores/familyStore.ts"
 import type {Task} from "@/types/task.ts";
 import TaskComponent from "@/views/Home/templates/TaskComponent.vue";
+import EditTaskComponent from "@/views/Home/templates/EditTaskComponent.vue";
+import type {CreateInvitation} from "@/types/family.ts";
+import CreateInvitationComponent from "@/views/Home/templates/CreateInvitationComponent.vue";
 
 export default {
   name: 'HomeView',
-  components: { Header, TaskComponent },
+  components: {CreateInvitationComponent, EditTaskComponent, Header, TaskComponent },
   setup() {
     const homeLoading = ref(false)
     const familyMembersLoading = ref(false)
     const tasksLoading = ref(false)
-
+    const showEditTaskComponent = ref(false)
+    const showCreateInvitationComponent = ref(false)
     const showCreateFamilyForm = ref(false)
     const showJoinFamilyForm = ref(false)
     const newFamilyName = ref('')
@@ -21,12 +25,13 @@ export default {
     const creatingFamily = ref(false)
     const joiningFamily = ref(false)
     const userHasFamily = ref(true)
+    const activeFamilyTab = computed(() => familyStore.activeFamilyTab)
 
-    const activeFamilyTab = ref<string>()
-    const familyMembers = ref<FamilyMember[]>([])
-    const currentFamily = ref<Family>()
-    const currentTasks = ref<Task[]>([])
-
+    const familyMembers = ref<Ref<FamilyMember>[]>([])
+    const currentTasks = computed(() => {
+      const tab = activeFamilyTab.value
+      return tab ? familyStore.tasks[tab] || [] : []
+    })
     const familyStore = getFamilyStore()
 
     const families = computed(() => familyStore.families)
@@ -68,7 +73,6 @@ export default {
           const tasksLoad: Task[] = (await apiService.get('task/' + familyId)).body || []
           familyStore.loadTasks(tasksLoad, familyId)
         }
-        currentTasks.value = familyStore.tasks[familyId] || [];
       } catch (error) {
         console.log(error)
         showError('Ошибка загрузки задач')
@@ -99,7 +103,8 @@ export default {
       creatingFamily.value = true
       try {
         console.log('Creating family:', newFamilyName.value)
-        showError('Функция создания семьи пока не реализована')
+        const familyMember: FamilyMember = (await apiService.post('family/create', {familyName: newFamilyName.value})).body
+        familyStore.addFamily(familyMember)
       } catch (error) {
         console.log(error)
         showError('Ошибка создания семьи')
@@ -108,38 +113,59 @@ export default {
       }
     }
 
-    const handleJoinFamily = async (): Promise<void> => {
-      joiningFamily.value = true
-      try {
-        // TODO: реализовать присоединение к семье
-        console.log('Joining family with code:', joinFamilyCode.value)
-        showError('Функция присоединения к семье пока не реализована')
-      } catch (error) {
+    const handleMarkTask = async (task: Ref<Task>, newMarked: boolean): Promise<void> => {
+      try{
+        await apiService.post(`task/mark-check`, {taskId: task.value.id, taskMarked: newMarked})
+        task.value.isMarked = newMarked
+      }catch(error : any){
         console.log(error)
-        showError('Ошибка присоединения к семье')
-      } finally {
-        joiningFamily.value = false
+        showError(error.message)
       }
     }
 
-    const toggleTask = async (taskId: string): Promise<void> => {
-      // TODO
+    const handleCheckTask = async (task: Ref<Task>, newChecked: boolean): Promise<void> => {
+      try{
+        await apiService.post(`task/mark-check`, {taskId: task.value.id, taskChecked: newChecked})
+        task.value.isChecked = newChecked
+      }
+      catch(error : any){
+        console.log(error)
+        showError(error.message)
+      }
     }
 
-    const deleteTask = async (taskId: string): Promise<void> => {
-      // TODO
+    const handleCloseTaskForm = async (): Promise<void> => {
+        showEditTaskComponent.value = false
+        familyStore.editTask = null
     }
 
-    const deleteMember = async (memberId: string): Promise<void> => {
-      // TODO
+    const handleDeleteTask = async (task: Ref<Task>): Promise<void> => {
+      try{
+        await apiService.delete(`task`, {taskId: task.value.id, familyId: activeFamilyTab.value})
+        familyStore.deleteTask(task.value)
+      }catch (error: any){
+        console.log(error)
+        showError(error.message)
+      }
     }
+
+    const handleEditTaskPress = async (task: Ref<Task>): Promise<void> => {
+
+      showEditTaskComponent.value = true;
+      familyStore.editTask = task.value
+    }
+
+    const handleOpenInvitationForm = async (): Promise<void> => {
+      showCreateInvitationComponent.value = true;
+    }
+
+    const handleCloseInvitationForm = async (createInvitation: Ref<CreateInvitation>): Promise<void> => {
+      showCreateInvitationComponent.value = false;
+    }
+
 
     const showAddTaskForm = (): void => {
-      alert('Форма добавления задачи - нужно реализовать')
-    }
-
-    const showAddMemberForm = (): void => {
-      alert('Форма добавления члена семьи - нужно реализовать')
+      showEditTaskComponent.value = true
     }
 
     watch(activeFamilyTab, async (newTab) => {
@@ -154,7 +180,7 @@ export default {
       await checkHasFamily()
 
       if (userHasFamily.value && Object.keys(families.value).length > 0) {
-        activeFamilyTab.value = Object.keys(families.value)[0]
+        familyStore.activeFamilyTab = Object.keys(families.value)[0]
       }
     })
 
@@ -175,7 +201,6 @@ export default {
       // Data
       activeFamilyTab,
       familyMembers,
-      currentFamily,
       currentTasks,
       families,
 
@@ -186,12 +211,18 @@ export default {
       loadTasks,
       loadMembers,
       handleCreateFamily,
-      handleJoinFamily,
-      toggleTask,
-      deleteTask,
-      deleteMember,
+      showEditTaskComponent,
       showAddTaskForm,
-      showAddMemberForm,
+
+      handleMarkTask,
+      handleCheckTask,
+      handleDeleteTask,
+      handleEditTaskPress,
+      handleCloseTaskForm,
+
+      handleCloseInvitationForm,
+      showCreateInvitationComponent,
+      handleOpenInvitationForm
     }
   }
 }
