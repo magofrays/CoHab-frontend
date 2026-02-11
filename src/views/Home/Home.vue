@@ -39,7 +39,6 @@
               <p class="text-gray-500">Задачи пока не добавлены</p>
             </div>
 
-            <!-- Скролл с максимальной высотой и адаптивностью -->
             <div v-else class="max-h-[70vh] md:max-h-[500px] lg:max-h-[600px] overflow-y-auto">
               <div class="space-y-4 pr-2">
                 <TaskComponent
@@ -321,7 +320,7 @@
                 <input
                     v-model="joinFamilyCode"
                     type="text"
-                    placeholder="Например: ABC-123-XYZ"
+                    placeholder="Например: ABC123XY"
                     class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition mb-4 text-center text-lg tracking-widest"
                     @keyup.enter="handleJoinFamily"
                 />

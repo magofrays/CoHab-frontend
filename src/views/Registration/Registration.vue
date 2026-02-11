@@ -66,7 +66,7 @@
       <!-- Footer Text -->
       <div class="text-center mt-6">
         <p class="text-sm text-gray-500">Есть аккаунт?
-          <a href="/login" class="text-gray-600 hover:text-gray-800 font-medium">Войти</a>
+          <a href="/cohab/login" class="text-gray-600 hover:text-gray-800 font-medium">Войти</a>
         </p>
       </div>
     </div>

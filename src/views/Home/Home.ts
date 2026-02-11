@@ -155,6 +155,20 @@ export default {
       familyStore.editTask = task.value
     }
 
+    const handleJoinFamily = async (): Promise<void> => {
+      creatingFamily.value = true
+      try {
+        console.log("Joining family: ", joinFamilyCode.value)
+        const familyMember = (await apiService.post(`family/use-invitation`, {code: joinFamilyCode.value} )).body
+        familyStore.addFamily(familyMember)
+      }
+      catch(error: any){
+        console.log(error)
+        showError(error.message)
+      }
+      creatingFamily.value = false
+    }
+
     const handleOpenInvitationForm = async (): Promise<void> => {
       showCreateInvitationComponent.value = true;
     }
@@ -219,6 +233,7 @@ export default {
       handleDeleteTask,
       handleEditTaskPress,
       handleCloseTaskForm,
+      handleJoinFamily,
 
       handleCloseInvitationForm,
       showCreateInvitationComponent,

@@ -30,6 +30,13 @@ const hasErrors = computed(() => {
   return errorState.value.validationError !== null;
 });
 
+const formatDateTimeLocal = (date: Date | string): string => {
+  if (!date) return ''
+  const d = new Date(date)
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
+}
+
 const createInvitationFunc = async (): Promise<void> => {
   try {
     isSaving.value = true;
@@ -41,13 +48,14 @@ const createInvitationFunc = async (): Promise<void> => {
       expiresAt: form.value.expiresAt
     };
 
-    invitation.value = (await apiService.post("family/createInvitation", createInvitation)).body;
+    invitation.value = (await apiService.post("family/create-invitation", createInvitation)).body;
     showInvitation.value = true;
   } catch (error: any) {
     console.error('Ошибка создания приглашения:', error);
   } finally {
     isSaving.value = false;
   }
+
 };
 </script>
 
@@ -75,9 +83,9 @@ const createInvitationFunc = async (): Promise<void> => {
 
       <div v-if="showInvitation && invitation" class="p-6">
         <InvitationComponent
-            :invitation-code="invitation.code"
+            :invitation-code="invitation.invitationCode"
             :num-members="invitation.numMembers"
-            :expires-at="invitation.expiresAt"
+            :expires-at="formatDateTimeLocal(invitation.expiresAt)"
         />
       </div>
 

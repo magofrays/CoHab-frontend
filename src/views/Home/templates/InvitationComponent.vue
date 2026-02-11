@@ -28,9 +28,6 @@
               <p class="font-mono text-lg font-semibold text-gray-800">
                 {{ invitationCode }}
               </p>
-              <p class="text-sm text-gray-500">
-                https://yourapp.com/join/{{ invitationCode }}
-              </p>
             </div>
           </div>
         </div>
@@ -41,12 +38,24 @@
         <div class="bg-white p-3 rounded-lg border">
           <div class="flex items-center mb-1">
             <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center mr-2">
-              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 3.75h-7.5"/>
+              <svg width="80" height="80" viewBox="0 0 24 24">
+                <defs>
+                  <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#93c5fd"/>
+                    <stop offset="100%" stop-color="#60a5fa"/>
+                  </linearGradient>
+                </defs>
+
+                <circle cx="12" cy="8" r="4" fill="url(#blueGradient)" stroke="#3b82f6" stroke-width="0.8"/>
+                <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"
+                      fill="url(#blueGradient)"
+                      stroke="#3b82f6"
+                      stroke-width="0.8"
+                      stroke-linecap="round"/>
               </svg>
             </div>
             <div>
-              <p class="text-sm text-gray-500">Участников</p>
+              <p class="text-sm text-gray-500">Человек могут присоединиться</p>
               <p class="font-semibold text-gray-800">
                 {{ numMembers }}
               </p>
@@ -64,7 +73,7 @@
             <div>
               <p class="text-sm text-gray-500">Действует до</p>
               <p class="font-semibold text-gray-800">
-                {{ formatDate(expiresAt) }}
+                {{ expiresAt }}
               </p>
             </div>
           </div>
@@ -80,19 +89,12 @@
 interface Props {
   invitationCode: string,
   numMembers: number,
-  expiresAt: Date
+  expiresAt: string
 
 }
 
 const props = defineProps<Props>()
 
-const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
-};
 
 const copyInvitation = async () => {
   await navigator.clipboard.writeText(props.invitationCode);

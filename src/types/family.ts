@@ -35,7 +35,7 @@ export interface CreateInvitation{
 
 export interface Invitation{
     familyId: string,
-    code: string,
+    invitationCode: string,
     numMembers: number,
     expiresAt: Date,
 }

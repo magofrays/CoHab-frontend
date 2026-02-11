@@ -44,7 +44,7 @@
       <!-- Footer Text -->
       <div class="text-center mt-6">
         <p class="text-sm text-gray-500">Нет аккаунта?
-          <a href="/registration" class="text-gray-600 hover:text-gray-800 font-medium">Зарегистрироваться</a>
+          <a href="/cohab/registration" class="text-gray-600 hover:text-gray-800 font-medium">Зарегистрироваться</a>
         </p>
       </div>
     </div>
